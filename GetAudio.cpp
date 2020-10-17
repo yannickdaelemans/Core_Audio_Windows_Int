@@ -48,12 +48,15 @@ HRESULT RecordAudioStream(MyAudioSink *pMySink)
     BYTE *pData;
     DWORD flags;
 
+    hr = CoInitialize(0);
+    
     hr = CoCreateInstance(
            CLSID_MMDeviceEnumerator, NULL,
            CLSCTX_ALL, IID_IMMDeviceEnumerator,
            (void**)&pEnumerator);
     std::cout << "Exit on Error: "<< std::system_category().message(hr) << " Error number: "<< hr <<" at 1"<<'\n';
     EXIT_ON_ERROR(hr)
+    std::cout << "Here" << '\n';
 
     hr = pEnumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &pDevice);
     EXIT_ON_ERROR(hr)
