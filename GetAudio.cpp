@@ -144,6 +144,7 @@ Exit:
     return hr;
 }
 
+
 HRESULT listAudioEndpoints(){
     HRESULT hr = S_OK;
     IMMDeviceEnumerator *pEnumerator = NULL;
@@ -207,7 +208,6 @@ HRESULT listAudioEndpoints(){
     SAFE_RELEASE(pCollection)
 
     Exit:
-        printf("Error!\n");
         CoTaskMemFree(pwszID);
         SAFE_RELEASE(pEnumerator)
         SAFE_RELEASE(pCollection)
@@ -220,8 +220,17 @@ HRESULT listAudioEndpoints(){
 
 int main(int argc, char const *argv[]) {
   MyAudioSink *pMySink;
-  std::cout << "Hello World" << '\n';
   HRESULT hr = listAudioEndpoints();
   //HRESULT hr = RecordAudioStream(pMySink);
   return 0;
 }
+
+/*
+ * Make list of audio endpoints
+ * Make user choose which endpoint he wants
+ * Get the ID from the endpoint
+ * use IMMDevice::GetId   To get ID from
+ * use this ID to make the device interface
+ * use IMMDeviceEnumerator::GetDevice with the above ID
+ * work further from the example above
+ */
