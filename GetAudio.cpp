@@ -4,8 +4,16 @@
 #include <stdio.h>
 #include <iostream>
 #include <system_error>
+//#include <functiondiscoverykeys.h>
+#include <Functiondiscoverykeys_devpkey.h>
+#include <setupapi.h>
+#include <initguid.h>  // Put this in to get rid of linker errors.
+#include <devpkey.h>  // Property keys defined here are now defined inline.
+#include <propsys.h>
 
 #include "MyAudioSink.h"
+
+#pragma comment(lib, "uuid.lib")
 
 //-----------------------------------------------------------
 // Record an audio stream from the default audio capture
@@ -136,9 +144,84 @@ Exit:
     return hr;
 }
 
+HRESULT listAudioEndpoints(){
+    HRESULT hr = S_OK;
+    IMMDeviceEnumerator *pEnumerator = NULL;
+    IMMDeviceCollection *pCollection = NULL;
+    IMMDevice *pEndpoint = NULL;
+    IPropertyStore *pProps = NULL;
+    LPWSTR pwszID = NULL;
+
+    hr = CoInitialize(0);
+
+    hr = CoCreateInstance(
+           CLSID_MMDeviceEnumerator, NULL,
+           CLSCTX_ALL, IID_IMMDeviceEnumerator,
+           (void**)&pEnumerator);
+    EXIT_ON_ERROR(hr);
+
+    hr = pEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE | DEVICE_STATE_UNPLUGGED | DEVICE_STATE_DISABLED, &pCollection);
+
+    UINT count;
+    hr = pCollection->GetCount(&count);
+
+    if(count == 0){
+        printf("no endpoints were detected");
+    }
+    //otherwise go through the list
+    for(ULONG nr = 0; nr < count; nr++){
+        hr = pCollection->Item(nr, &pEndpoint);
+
+        hr = pEndpoint->GetId(&pwszID);
+        EXIT_ON_ERROR(hr)
+
+        hr = pEndpoint->OpenPropertyStore(
+                           STGM_READ, &pProps);
+        EXIT_ON_ERROR(hr)
+
+        static PROPERTYKEY key;
+
+        GUID IDevice_FriendlyName = { 0xa45c254e, 0xdf1c, 0x4efd, { 0x80, 0x20, 0x67, 0xd1, 0x46, 0xa8, 0x50, 0xe0 } };
+        key.pid = 14;
+        key.fmtid = IDevice_FriendlyName;
+        PROPVARIANT varName;
+        // Initialize container for property value.
+        PropVariantInit(&varName);
+
+        // Get the endpoint's friendly-name property.
+        hr = pProps->GetValue(
+                        key, &varName);
+        EXIT_ON_ERROR(hr)
+
+        // Print endpoint friendly name and endpoint ID.
+        printf("Endpoint %d: \"%S\" (%S)\n",
+                nr, varName.pwszVal, pwszID);
+
+        CoTaskMemFree(pwszID);
+        pwszID = NULL;
+        PropVariantClear(&varName);
+        SAFE_RELEASE(pProps)
+        SAFE_RELEASE(pEndpoint)
+    }
+    SAFE_RELEASE(pEnumerator)
+    SAFE_RELEASE(pCollection)
+
+    Exit:
+        printf("Error!\n");
+        CoTaskMemFree(pwszID);
+        SAFE_RELEASE(pEnumerator)
+        SAFE_RELEASE(pCollection)
+        SAFE_RELEASE(pEndpoint)
+        SAFE_RELEASE(pProps)
+
+
+    return hr;
+}
+
 int main(int argc, char const *argv[]) {
   MyAudioSink *pMySink;
   std::cout << "Hello World" << '\n';
-  HRESULT hr = RecordAudioStream(pMySink);
+  HRESULT hr = listAudioEndpoints();
+  //HRESULT hr = RecordAudioStream(pMySink);
   return 0;
 }
