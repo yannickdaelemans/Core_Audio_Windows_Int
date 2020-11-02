@@ -26,7 +26,7 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
   BYTE data = 0;
   while (numFramesAvailable > 0) {
     data = *pData;
-    //printf("%d\n", data );
+    printf("%d\n", data );
     //std::cout<< data << '\n';
     pData++;
     --numFramesAvailable;

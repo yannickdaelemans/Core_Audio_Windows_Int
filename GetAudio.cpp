@@ -38,7 +38,7 @@ const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
 const IID IID_IAudioClient = __uuidof(IAudioClient);
 const IID IID_IAudioCaptureClient = __uuidof(IAudioCaptureClient);
 
-HRESULT RecordAudioStream(MyAudioSink *pMySink)
+HRESULT RecordAudioStreamMicrophone(MyAudioSink *pMySink)
 {
 
     HRESULT hr;
@@ -144,8 +144,117 @@ Exit:
     return hr;
 }
 
+HRESULT RecordAudioStreamBLE(MyAudioSink *pMySink, LPWSTR pwszID)
+{
 
-HRESULT listAudioEndpoints(){
+    HRESULT hr;
+    REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
+    REFERENCE_TIME hnsActualDuration;
+    UINT32 bufferFrameCount;
+    UINT32 numFramesAvailable;
+    IMMDeviceEnumerator *pEnumerator = NULL;
+    IMMDevice *pDevice = NULL;
+    IAudioClient *pAudioClient = NULL;
+    IAudioCaptureClient *pCaptureClient = NULL;
+    WAVEFORMATEX *pwfx = NULL;
+    UINT32 packetLength = 0;
+    BOOL bDone = FALSE;
+    BYTE *pData;
+    DWORD flags;
+
+    hr = CoInitialize(0);
+
+    hr = CoCreateInstance(
+           CLSID_MMDeviceEnumerator, NULL,
+           CLSCTX_ALL, IID_IMMDeviceEnumerator,
+           (void**)&pEnumerator);
+    EXIT_ON_ERROR(hr)
+
+    hr = pEnumerator->GetDevice(pwszID, &pDevice);
+    EXIT_ON_ERROR(hr)
+
+    hr = pDevice->Activate(IID_IAudioClient, CLSCTX_ALL,
+                          NULL, (void**)&pAudioClient);
+    EXIT_ON_ERROR(hr)
+
+    hr = pAudioClient->GetMixFormat(&pwfx);
+    EXIT_ON_ERROR(hr)
+
+    hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
+                                  0, hnsRequestedDuration,
+                                  0, pwfx, NULL);
+    EXIT_ON_ERROR(hr)
+
+    // Get the size of the allocated buffer.
+    hr = pAudioClient->GetBufferSize(&bufferFrameCount);
+    EXIT_ON_ERROR(hr)
+
+    hr = pAudioClient->GetService(IID_IAudioCaptureClient,
+                                  (void**)&pCaptureClient);
+    EXIT_ON_ERROR(hr)
+    printf("The buffer size is: %d\n", bufferFrameCount);
+
+    // Notify the audio sink which format to use.
+    hr = pMySink->SetFormat(pwfx);
+    EXIT_ON_ERROR(hr)
+
+    // Calculate the actual duration of the allocated buffer.
+    hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwfx->nSamplesPerSec;
+
+    hr = pAudioClient->Start();  // Start recording.
+    EXIT_ON_ERROR(hr)
+
+    // Each loop fills about half of the shared buffer.
+    while (bDone == FALSE)
+    {
+        // Sleep for half the buffer duration.
+        Sleep(hnsActualDuration/REFTIMES_PER_MILLISEC/2);
+
+        hr = pCaptureClient->GetNextPacketSize(&packetLength);
+        EXIT_ON_ERROR(hr)
+
+        printf("packet size = %d\n", packetLength);
+        while (packetLength != 0)
+        {
+            // Get the available data in the shared buffer.
+            hr = pCaptureClient->GetBuffer( &pData,
+                                            &numFramesAvailable,
+                                            &flags, NULL, NULL);
+            EXIT_ON_ERROR(hr)
+
+            if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
+            {
+                pData = NULL;  // Tell CopyData to write silence.
+            }
+
+            // Copy the available capture data to the audio sink.
+            hr = pMySink->CopyData(pData, numFramesAvailable, &bDone);
+            EXIT_ON_ERROR(hr)
+
+            hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
+            EXIT_ON_ERROR(hr)
+
+            hr = pCaptureClient->GetNextPacketSize(&packetLength);
+            EXIT_ON_ERROR(hr)
+        }
+    }
+
+    hr = pAudioClient->Stop();  // Stop recording.
+    EXIT_ON_ERROR(hr)
+
+Exit:
+    printf("%s\n", hr);
+    CoTaskMemFree(pwfx);
+    SAFE_RELEASE(pEnumerator)
+    SAFE_RELEASE(pDevice)
+    SAFE_RELEASE(pAudioClient)
+    SAFE_RELEASE(pCaptureClient)
+
+    return hr;
+}
+
+
+LPWSTR listAudioEndpoints(){
     HRESULT hr = S_OK;
     IMMDeviceEnumerator *pEnumerator = NULL;
     IMMDeviceCollection *pCollection = NULL;
@@ -161,7 +270,7 @@ HRESULT listAudioEndpoints(){
            (void**)&pEnumerator);
     EXIT_ON_ERROR(hr);
 
-    hr = pEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE | DEVICE_STATE_UNPLUGGED | DEVICE_STATE_DISABLED, &pCollection);
+    hr = pEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE /*| DEVICE_STATE_UNPLUGGED | DEVICE_STATE_DISABLED*/, &pCollection);
 
     UINT count;
     hr = pCollection->GetCount(&count);
@@ -204,6 +313,14 @@ HRESULT listAudioEndpoints(){
         SAFE_RELEASE(pProps)
         SAFE_RELEASE(pEndpoint)
     }
+
+    ULONG input;
+    std::cout << "Which input would you like?";
+    std::cin >> input;
+
+    hr = pCollection->Item(input, &pEndpoint);
+    hr = pEndpoint->GetId(&pwszID);
+
     SAFE_RELEASE(pEnumerator)
     SAFE_RELEASE(pCollection)
 
@@ -215,13 +332,15 @@ HRESULT listAudioEndpoints(){
         SAFE_RELEASE(pProps)
 
 
-    return hr;
+    return pwszID;
 }
 
 int main(int argc, char const *argv[]) {
-  MyAudioSink *pMySink;
-  HRESULT hr = listAudioEndpoints();
-  //HRESULT hr = RecordAudioStream(pMySink);
+  MyAudioSink *pMiceSink;
+  MyAudioSink *pBLESink;
+  LPWSTR pwszID = listAudioEndpoints();
+  HRESULT hr = RecordAudioStreamBLE(pBLESink, pwszID);
+  //HRESULT hr = RecordAudioStreamMycrophone(pMiceSink);
   return 0;
 }
 
