@@ -8,6 +8,7 @@
 
 class MyAudioSink {
 public:
+  // methods
   MyAudioSink();
   HRESULT SetFormat(WAVEFORMATEX *pwfx);
   HRESULT CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDone);

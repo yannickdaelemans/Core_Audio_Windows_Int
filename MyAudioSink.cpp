@@ -31,6 +31,7 @@ HRESULT MyAudioSink::SetFormat(WAVEFORMATEX *pwfx){
   channels = pwfx->nChannels;
 
   if(pwfx->cbSize >= 22){
+    printf("Here\n");
     WAVEFORMATEXTENSIBLE *waveFormatExtensible = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(pwfx);
     if(waveFormatExtensible->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT){
         printf("the variable type is a float\n");
@@ -40,20 +41,19 @@ HRESULT MyAudioSink::SetFormat(WAVEFORMATEX *pwfx){
     }
   }
 
+  printf("Out\n");
+
   return 0;
 }
+
+
 
 HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDone){
   BYTE data = 0;
   UINT32 num = numFramesAvailable;
 
   while (num > 0) {
-    //printf("%d\n", data );
-    //std::cout<< data << '\n';
     data = *pData;
-    //pData++;
-    //num --;
-
     int numSize = 0;
     INT32 tData = *pData;
     BYTE* dataBegin = pData;
@@ -69,34 +69,13 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
     }
     BYTE* dataEnd = pData;
     //float fData = *((float*)&tData);
-    INT32 fData;
-    /*
-    memcpy(&fData, &tData, sizeof(fData));
-    printf("%f\n", fData );
-    */
+    FLOAT fData;
 
     std::copy(reinterpret_cast<const BYTE*>(dataBegin),
               reinterpret_cast<const BYTE*>(dataEnd),
               reinterpret_cast<BYTE*>(&fData));
-    //printf("%d\n", fData );
+    printf("%f\n", fData );
   }
 
-/*
-  while (numFramesAvailable > 0) {
-    //printf("%d\n", data );
-    //std::cout<< data << '\n';
-    UINT32* data_pointer = (UINT32*) pData;
-    data = *data_pointer;
-    data_pointer++;
-    numFramesAvailable -= 4;
-
-    //std::cout<< data << '\n';
-    printf("%u\n", data);
-    //int num = 0;
-    /*
-    while (num < blocksize/channels){
-        printf("%d", );
-    }
-  } */
   return 0;
 }
