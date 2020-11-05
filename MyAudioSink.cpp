@@ -44,7 +44,8 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
     //num --;
 
     int numSize = 0;
-    UINT32 tData = *pData;
+    INT32 tData = *pData;
+    BYTE* dataBegin = pData;
     //printf("%d\n", data );
 
     while (numSize < blocksize/channels){
@@ -55,8 +56,18 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
         num --;
         pData++;
     }
+    BYTE* dataEnd = pData;
+    //float fData = *((float*)&tData);
+    INT32 fData;
+    /*
+    memcpy(&fData, &tData, sizeof(fData));
+    printf("%f\n", fData );
+    */
 
-    printf("%d\n", tData );
+    std::copy(reinterpret_cast<const BYTE*>(dataBegin),
+              reinterpret_cast<const BYTE*>(dataEnd),
+              reinterpret_cast<BYTE*>(&fData));
+    printf("%d\n", fData );
   }
 
 /*
