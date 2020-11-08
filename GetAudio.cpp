@@ -261,6 +261,7 @@ LPWSTR listAudioEndpoints(){
     IMMDevice *pEndpoint = NULL;
     IPropertyStore *pProps = NULL;
     LPWSTR pwszID = NULL;
+    DWORD *pdwState = NULL;
 
     hr = CoInitialize(0);
 
@@ -287,6 +288,7 @@ LPWSTR listAudioEndpoints(){
 
         hr = pEndpoint->OpenPropertyStore(
                            STGM_READ, &pProps);
+
         EXIT_ON_ERROR(hr)
 
         static PROPERTYKEY key;

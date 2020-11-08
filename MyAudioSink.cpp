@@ -31,7 +31,6 @@ HRESULT MyAudioSink::SetFormat(WAVEFORMATEX *pwfx){
   channels = pwfx->nChannels;
 
   if(pwfx->cbSize >= 22){
-    printf("Here\n");
     WAVEFORMATEXTENSIBLE *waveFormatExtensible = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(pwfx);
     if(waveFormatExtensible->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT){
         printf("the variable type is a float\n");
@@ -40,8 +39,6 @@ HRESULT MyAudioSink::SetFormat(WAVEFORMATEX *pwfx){
         printf("the term is a PCM\n");
     }
   }
-
-  printf("Out\n");
 
   return 0;
 }
@@ -53,27 +50,35 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
   UINT32 num = numFramesAvailable;
 
   while (num > 0) {
+    union{
+      float f;
+      BYTE b[4];
+    } src;
+
     data = *pData;
     int numSize = 0;
     INT32 tData = *pData;
     BYTE* dataBegin = pData;
     //printf("%d\n", data );
-
-    while (numSize < blocksize/channels){
+    numSize = blocksize/channels -1;
+    while (numSize >= 0 ){
+      /*
         tData <<=8;
         tData |= *pData;
-
-        numSize ++;
+        */
+        src.b[numSize] = *pData;
+        numSize --;
         num --;
         pData++;
     }
     BYTE* dataEnd = pData;
-    //float fData = *((float*)&tData);
-    FLOAT fData;
+    FLOAT fData = *((float*)&src);
+    //FLOAT fData;
 
     std::copy(reinterpret_cast<const BYTE*>(dataBegin),
               reinterpret_cast<const BYTE*>(dataEnd),
               reinterpret_cast<BYTE*>(&fData));
+
     printf("%f\n", fData );
   }
 
