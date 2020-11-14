@@ -47,7 +47,7 @@ HRESULT MyAudioSink::SetFormat(WAVEFORMATEX *pwfx){
 
 HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDone){
   BYTE data = 0;
-  UINT32 num = numFramesAvailable;
+  UINT32 num = 10;
 
   while (num > 0) {
     union{
@@ -60,25 +60,22 @@ HRESULT MyAudioSink::CopyData(BYTE *pData, UINT32 numFramesAvailable, BOOL *bDon
     INT32 tData = *pData;
     BYTE* dataBegin = pData;
     //printf("%d\n", data );
-    numSize = blocksize/channels -1;
-    while (numSize >= 0 ){
-      /*
-        tData <<=8;
-        tData |= *pData;
-        */
+    //numSize = blocksize/channels -1;
+    while (numSize <= blocksize/channels -1 ){
+
         src.b[numSize] = *pData;
-        numSize --;
-        num --;
+        numSize++;
         pData++;
     }
+    num --;
     BYTE* dataEnd = pData;
     FLOAT fData = *((float*)&src);
     //FLOAT fData;
-
+    /*
     std::copy(reinterpret_cast<const BYTE*>(dataBegin),
               reinterpret_cast<const BYTE*>(dataEnd),
               reinterpret_cast<BYTE*>(&fData));
-
+              */
     printf("%f\n", fData );
   }
 
